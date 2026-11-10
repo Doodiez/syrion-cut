@@ -1,0 +1,177 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Syrion Cut</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <img class="logo" src="logo.png" alt="" />
+      <div>
+        <h1>Syrion Cut</h1>
+        <p>Drop product photos — backgrounds vanish automatically</p>
+      </div>
+    </div>
+    <div class="actions">
+      <div class="preset-box" title="Saved setting combinations. Pick one to apply it.">
+        <span class="preset-label">Preset</span>
+        <select id="preset"></select>
+        <button id="presetSave" class="btn small" title="Save the current settings as a preset">Save…</button>
+        <button id="presetDelete" class="btn small ghost hidden" title="Delete this preset">✕</button>
+        <form id="presetForm" class="preset-form hidden">
+          <input id="presetName" type="text" maxlength="40" placeholder="Preset name" autocomplete="off" />
+          <button class="btn small primary" type="submit">Save</button>
+          <button id="presetCancel" class="btn small ghost" type="button">Cancel</button>
+        </form>
+      </div>
+      <div class="sep"></div>
+      <span id="engine" class="pill">Loading AI…</span>
+      <button id="addFiles" class="btn primary">Add images</button>
+      <button id="addFolder" class="btn">Add folder</button>
+    </div>
+  </header>
+
+  <section class="settings">
+    <span class="row-label">Cut-out</span>
+    <label class="field" title="Removes faint leftover smoke, steam or shadow and makes the product fully solid. 0 = off.">
+      Haze cleanup
+      <input type="range" id="cleanup" min="0" max="100" step="5" value="20" />
+      <span id="cleanupVal" class="num">20</span>
+    </label>
+    <label class="toggle" title="Removes the old background colour that bleeds into soft edges (halos).">
+      <input type="checkbox" id="fixEdges" />
+      <span class="switch"></span>
+      Fix edge colours
+    </label>
+    <div class="sep"></div>
+    <label class="field" title="Pulls the edge inward to remove any leftover fringe or halo. 1–2 px is usually enough.">
+      Edge shrink
+      <input type="range" id="shrink" min="0" max="10" value="0" />
+      <span id="shrinkVal" class="num">0</span>
+    </label>
+    <label class="field" title="Softens the edge so the product blends into the poster instead of looking pasted on.">
+      Soften
+      <input type="range" id="soften" min="0" max="10" value="0" />
+      <span id="softenVal" class="num">0</span>
+    </label>
+  </section>
+
+  <section class="settings">
+    <span class="row-label">Finishing</span>
+    <label class="field" title="Makes the product bigger and sharper with AI (Real-ESRGAN). Great for small client photos. Takes a few seconds per image.">
+      AI upscale
+      <select id="upscale">
+        <option value="1">Off</option>
+        <option value="2">2×</option>
+        <option value="4">4×</option>
+      </select>
+    </label>
+    <div class="sep"></div>
+    <label class="toggle" title="Adds a sticker-style border around the product.">
+      <input type="checkbox" id="outline" />
+      <span class="switch"></span>
+      Outline
+    </label>
+    <span id="outlineFields" class="field">
+      <label class="small-swatch" title="Outline colour">
+        <input type="color" id="outlineColor" value="#ffffff" />
+      </label>
+      <input type="range" id="outlineSize" min="1" max="20" value="6" title="Outline thickness" />
+    </span>
+    <div class="sep"></div>
+    <label class="toggle">
+      <input type="checkbox" id="autoCrop" />
+      <span class="switch"></span>
+      Auto-crop to product
+    </label>
+    <label class="field" id="paddingField">
+      Padding
+      <input type="number" id="padding" min="0" max="500" value="20" />
+      px
+    </label>
+    <div class="sep"></div>
+    <div class="field">
+      Save to
+      <button id="outputBtn" class="btn small" title="Choose output folder">“no-bg” folder next to originals</button>
+      <button id="outputReset" class="btn small ghost hidden" title="Back to default">✕</button>
+    </div>
+  </section>
+
+  <main class="layout">
+    <aside class="queue">
+      <div class="queue-head">
+        <span id="queueCount">No images yet</span>
+        <button id="clearDone" class="btn small ghost hidden">Clear finished</button>
+      </div>
+      <div id="batch" class="batch hidden">
+        <div class="progress"><div id="progressFill"></div></div>
+        <div class="batch-row">
+          <span id="batchText"></span>
+          <span class="batch-btns">
+            <button id="pauseBtn" class="btn small hidden">Stop</button>
+            <button id="redoAll" class="btn small hidden" title="Process every image again with the current settings">Redo all</button>
+          </span>
+        </div>
+      </div>
+      <ul id="list"></ul>
+    </aside>
+
+    <section class="stage">
+      <div id="empty" class="empty">
+        <div class="drop-icon">⬇</div>
+        <h2>Drop images or folders here</h2>
+        <p>PNG, JPG, WEBP, BMP, TIFF · results are saved as transparent PNGs</p>
+      </div>
+
+      <div id="viewer" class="viewer hidden">
+        <div class="viewer-bar">
+          <span id="viewName" class="view-name"></span>
+          <button id="compareBtn" class="btn small compare-btn" title="Before / after: drag the divider to compare with the original photo (shortcut: C)">Compare</button>
+          <div class="zoom-ctl" title="Scroll to zoom · drag to move · double-click for 100% / fit">
+            <button id="zoomOut" class="btn small">−</button>
+            <button id="zoomPct" class="btn small zoom-pct">Fit</button>
+            <button id="zoomIn" class="btn small">+</button>
+          </div>
+          <div class="bg-picker" title="Preview background">
+            <button data-bg="checker" class="bg-swatch checker active"></button>
+            <button data-bg="#ffffff" class="bg-swatch" style="background:#fff"></button>
+            <button data-bg="#111111" class="bg-swatch" style="background:#111"></button>
+            <label class="bg-swatch custom" title="Test on your poster colour">
+              <input type="color" id="bgColor" value="#e11d48" />
+            </label>
+          </div>
+        </div>
+        <div id="canvas" class="canvas checker">
+          <div id="stack" class="stack">
+            <img id="viewImg" alt="" />
+            <img id="origImg" alt="" class="hidden" />
+          </div>
+          <div id="divider" class="divider hidden">
+            <span class="tag left">Before</span><span class="tag right">After</span>
+            <div class="knob">⇆</div>
+          </div>
+          <div id="viewBusy" class="busy hidden"><div class="spinner"></div>Removing background…</div>
+          <div id="viewError" class="error-box hidden"></div>
+        </div>
+        <div class="viewer-foot">
+          <span id="viewInfo"></span>
+          <div>
+            <button id="redo" class="btn small" title="Process this image again with the current settings">Redo</button>
+            <button id="openFile" class="btn small">Open</button>
+            <button id="showFolder" class="btn small">Show in folder</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="dropOverlay" class="drop-overlay hidden">
+    <div>Release to remove backgrounds</div>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+node_modules/
+src-tauri/target/
+src-tauri/gen/schemas/
+
+# Machine-specific build folder setting
+src-tauri/.cargo/
+
+# AI models: too big for Git, shipped on the Releases page instead
+src-tauri/resources/*.onnx
+src-tauri/resources/*.data
+
+# Build outputs
+*.exe
+*.zip
